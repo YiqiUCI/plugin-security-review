@@ -16,15 +16,16 @@ MAX_FINDINGS = 50
 RULES = {
     "hidden_markup": re.compile(r"<!--|\bdisplay\s*:\s*none\b|\bvisibility\s*:\s*hidden\b", re.I),
     "invisible_unicode": re.compile(r"[\u200b-\u200f\u202a-\u202e\u2060\u2066-\u2069\ufeff]"),
-    "instruction_override": re.compile(
-        r"\b(?:ignore|disregard|override)\s+(?:all\s+)?(?:the\s+)?"
-        r"(?:previous|prior|above|system)\s+(?:instructions?|rules?|prompts?)\b"
-        r"|<\s*/?\s*(?:system|developer|assistant)\s*>|\[/?INST\]"
-        r"|(?:忽略|无视|覆盖)(?:此前|之前|以上|系统|所有|先前){1,3}(?:的)?(?:指令|规则|提示词)",
-        re.I,
-    ),
     "inline_shell": re.compile(r"!`"),
 }
+INSTRUCTION_OVERRIDE = re.compile(
+    r"\b(?:ignore|disregard|override)\s+(?:all\s+)?(?:the\s+)?"
+    r"(?:previous|prior|above|system)\s+(?:instructions?|rules?|prompts?)\b"
+    r"|<\s*(?:/\s*)?(?:system|developer|assistant)\s*>|\[/?INST\]"
+    r"|(?:忽略|无视|覆盖)(?:\s*(?:此前|之前|以上|系统|所有|先前)){1,3}"
+    r"\s*(?:的\s*)?(?:指令|规则|提示词)",
+    re.I,
+)
 DOWNLOAD = re.compile(r"\b(?:curl|wget|iwr|irm|invoke-webrequest|invoke-restmethod)\b", re.I)
 SHELL_PIPE = re.compile(r"\|[ \t]*(?:bash|sh|zsh|pwsh|powershell|iex|invoke-expression)\b", re.I)
 
@@ -40,12 +41,22 @@ def scan(raw):
         result["status"] = "unsupported_encoding"
         return result
 
+    # Match a wrapped directive once and report the line where it starts.
+    override_lines = set()
+    number, offset = 1, 0
+    for match in INSTRUCTION_OVERRIDE.finditer(content):
+        number += content.count("\n", offset, match.start())
+        override_lines.add(number)
+        offset = match.start()
+
     lines = content.split("\n")
     if not lines[-1]:
         lines.pop()
     result["lines_scanned"] = len(lines)
     for number, line in enumerate(lines, 1):
         kinds = [kind for kind, rule in RULES.items() if rule.search(line)]
+        if number in override_lines:
+            kinds.append("instruction_override")
         if SHELL_PIPE.search(line) and DOWNLOAD.search(line):
             kinds.append("download_to_shell")
         for kind in kinds:

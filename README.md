@@ -7,12 +7,17 @@ severity, confidence, and what could not be verified.
 
 ## Install and use
 
-Copy [SKILL.md](SKILL.md) and [scripts/readme_signals.py](scripts/readme_signals.py)
-into the `plugin-security-review` folder inside your personal Codex skills
-directory (normally `~/.codex/skills/`). Keep the `scripts/` subdirectory. The
-README inspector uses Python 3 and has no package dependencies. Ask Codex:
+Copy [SKILL.md](SKILL.md), the [references/](references/) directory, and the
+[README inspector](scripts/readme_signals.py) into your personal Codex skills
+directory as `plugin-security-review/`. Preserve `references/` and `scripts/`.
+The optional inspector uses Python 3 with no package dependencies. Ask Codex:
 
 > Use $plugin-security-review to review this plugin: <GitHub URL or local path>.
+
+For a narrow review, ask for README, package metadata, entrypoints, and URLs
+found in source. Specify any limits on review helpers and delegation. The
+report traces outgoing data, file and credential access, install and startup
+behavior, and any execution of decoded or downloaded content.
 
 The review treats target files as data. It never installs, imports, builds, tests,
 or runs target code and never connects to the target MCP server. No third-party
@@ -21,11 +26,12 @@ and configuration available for inspection.
 
 ## README and handoffs
 
-The reviewer inspects target READMEs as bytes. The helper emits only fixed
-signal labels, line numbers, counts, and scan status. Reviewers pass these
-locations and their own summaries between agents. The lead reviewer produces
-one report with a recommendation, findings ranked by severity and confidence,
-source locations, and coverage gaps. README signals are leads for review.
+When permitted, the inspector reads README bytes and emits fixed labels,
+line numbers, counts, and scan status. It flags patterns for prompt overrides,
+downloaded or encoded execution, uploads, install hooks, persistence, and
+credential paths. The reviewer shares evidence locations and written summaries
+with authorized agents. The lead reviewer ranks findings and states what was
+covered. A signal is a lead, and an empty scan cannot establish safety.
 
 The review approach draws on
 [Sentry's skill-scanner](https://github.com/getsentry/skills/blob/main/skills/skill-scanner/SKILL.md)
